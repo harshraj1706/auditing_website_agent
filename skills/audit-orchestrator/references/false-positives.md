@@ -1,0 +1,34 @@
+# False positives
+
+- Do not fire any vertical schema specialist (flight / product / catalog / FAQ / vehicle / local / article) unless `classify_page()` returns that class with **strong proof**. Default is **general** — if unsure, skip the specialist entirely (do not run then hide). Same root cause as Terms→ItemList, VPAT→Flight, and Shopify homepage→Flight.
+- Do not treat English “how to get” / “and to the” as an IATA route pair. IATA matching is case-sensitive `DEL to BOM` only — never `re.I` on `[A-Z]{3} to [A-Z]{3}`.
+- Do not fire CRA-01 or FC-ENT-01 (or any DOM/schema finding) when the origin fetch is status 0, HTTP ≥500, or SSL/certificate failure — emit **NET-01** only. Empty HTML is not evidence of missing JSON-LD.
+- Do not fire FC-ENT-01, FC-FRESH-06, or other DOM findings when the origin fetch is HTTP **403** or **429**. Emit **CRA-03** only. A WAF challenge page is not the brand’s real HTML (Meesho-class false positive).
+- Do not run ENG-02 (or other HTML-structural checks: H1, breadcrumbs, home link, nav landmarks) on non-HTML responses (`text/plain`, markdown, JSON, etc.). A real `SKILL.md` / agent-facing resource is not a broken landing page — skip it, or handle it with a content-type-appropriate check later.
+- Do not fire FC-ENT-01-FLIGHT unless the page has a **hard travel signal**: `flight`/`airline`/`IATA`, `departure|arrival` + `airport|flight|gate`, route pair like `DEL-BOM`, or a flight/timetable URL path. Bare “departure”/“arrival date” on accessibility/VPAT/checkout docs is not travel. Paths under `/accessibility|/vpat|/wcag|/compliance` are legal/compliance, not flight.
+- Do not let CRA-04 evidence say “N pages” when `affected_urls` lists fewer after URL dedupe; page count and URL list must match.
+- Do not fire CRA-04 on UI chrome: `icon` / `logo` / `spacer` classes (or tiny images ≤100px). Only missing `alt` on load-bearing photos (width or height &gt; 100px, or unlabeled hero/banner) counts.
+- Do not flag homepage noindex on thank-you, cart, login, or search-result URLs.
+- Do not flag SPA/empty shell if `__NEXT_DATA__`, JSON-LD, or HTML word count is healthy (Stripe/Vercel SSR). Empty-shell CRA-02 requires word_count < 25 and no `__NEXT_DATA__`/JSON-LD. Never put Playwright-ratio debug notes in evidence.
+- Do not treat `/about` as CRA-05 just because the global nav contains Log in; CRA-05 is for auth-shaped paths (`/login`, `/doctor/login`, `/account`, …) that are actually thin.
+- Do not classify clinic-management / appointment-scheduling SaaS as `local` because the copy contains “clinic”. Software/SaaS signals outrank a bare “clinic” token.
+- Do not fire FC-ENT-01-LOCAL on a site that is not `local`, and do not fire it when FC-ENT-01 already covers a homepage with zero identity schema.
+- Do not suggest a specific Wikipedia/Wikidata `sameAs` URL unless the item passes **identity guard**: (1) not a Wikipedia disambiguation page, (2) candidate text corroborates the audited entity (domain, parent company, product class — not bare name match), (3) when the brand name is overloaded (Gemini, Delta, …), **no guess** — emit no sameAs rather than link the dab page or zodiac constellation (Q8923).
+- Do not treat missing `llms.txt` as high/critical.
+- Do not require Product schema on a restaurant homepage.
+- Do not apply Playwright 0.70 raw/rendered ratio (CRA-02 uses empty-shell only).
+- Do not treat missing Wikipedia/Wikidata as a defect for small/local sites with no scale claims (Tier 1 is claim-proportional).
+- Do not require taxID/DUNS/NAICS as high (Apple gold schema omits them).
+- Do not HEAD more than a handful of CTA URLs; never authenticate.
+- If robots.txt disallows a path, record a limitation instead of inventing page findings.
+- Do not treat a page as a collection just because the URL contains `/collections/` (Shopify). Require a structural grid (4+ priced cards) or the check will miss WooCommerce `/product-category/` and custom `/shop/` listings.
+- Do not fire FC-FRESH-05 on a PDP that already has Product+Offer JSON-LD just because a related-product strip has several prices.
+- Do not score empty `twitter:description` as medium/high when `name=description` is populated. All three tags present and empty is the high case; missing description is medium.
+- Do not duplicate blank-metadata ownership in engagement (ENG-*). It is FC-FRESH-06 only.
+- Do not apply FC-ENT-02’s ≥2 authority sameAs bar to a LocalBusiness that already has complete PostalAddress + phone (Krishna Dental). That is geography disambiguation, not a Novatech-class miss — use FC-ENT-04.
+- Do not flag programmatic city-pair pages solely for shared section templates when per-city facts are present. Flag empty FAQ accordion answers (`ENG-04`) instead.
+- Do not treat short factual FAQ answers (`2h 15m`, `Yes`) as empty; emptiness means no alphanumeric answer body (and no FAQPage acceptedAnswer).
+- Do not fire FC-FRESH-05 on a 1-product PDP related strip; do fire on homepage merchandising grids with 4+ priced cards and on tiny 2–3 SKU category URLs.
+- Do not classify a JS-heavy enterprise homepage as `placeholder` just because raw word_count is low when marketing meta is rich or Wikipedia/Wikidata echoes the brand — that is `crawl_incomplete`, and FC-ENT-01 must not be high “brand unknown.”
+- Do not invent LinkedIn/Quora consensus when those platforms were not probed; list them under consensus limitations.
+- Do not emit laundry-list evidence of every null signal field; lead with the mechanism and consensus context.

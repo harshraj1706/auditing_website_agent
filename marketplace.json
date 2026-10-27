@@ -1,0 +1,31 @@
+{
+  "name": "brand-ai-readiness-audit",
+  "version": "1.0.0",
+  "skills": [
+    {
+      "id": "audit-orchestrator",
+      "path": "skills/audit-orchestrator",
+      "entrypoint": true
+    },
+    {
+      "id": "crawl-access-audit",
+      "path": "skills/crawl-access-audit"
+    },
+    {
+      "id": "render-quotability-audit",
+      "path": "skills/render-quotability-audit"
+    },
+    {
+      "id": "freshness-corroboration-audit",
+      "path": "skills/freshness-corroboration-audit"
+    },
+    {
+      "id": "engagement-orientation-audit",
+      "path": "skills/engagement-orientation-audit"
+    },
+    {
+      "id": "nontext-surface-audit",
+      "path": "skills/nontext-surface-audit"
+    }
+  ]
+}

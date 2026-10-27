@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.DS_Store
+crawl_snapshot.json
+audit-report.json
+out/
+tmp/
+*.zip
+research/*.html
+research/home.html
