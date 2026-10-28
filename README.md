@@ -116,6 +116,130 @@ Measured on a typical dev machine: `example.com` ~5s, `kivihealth.com` (12 pages
 - **FC-FRESH-05** — structural priced-card grids, not Shopify `/collections/` URLs.
 - **ENG-04** — empty FAQ accordion bodies only; short factual answers are not empty.
 
+## REST API (Phase 1 Integration)
+
+The engine includes a lightweight, asynchronous REST API built with FastAPI to support future web interfaces (e.g. React frontend) without altering the underlying skill-based audit architecture.
+
+### 1. Installation
+
+Install the additional API and testing dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Start the API Server (Windows PowerShell)
+
+```powershell
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+The interactive OpenAPI documentation will be accessible at `http://127.0.0.1:8000/docs`.
+
+### 3. API Endpoints
+
+| Method | Endpoint | Description | Status Code |
+|---|---|---|---|
+| `GET` | `/api/health` | Health check & engine readiness check | `200 OK` |
+| `POST` | `/api/audits` | Submit a website URL for an asynchronous audit | `202 Accepted` |
+| `GET` | `/api/audits/{audit_id}` | Poll the current status (`queued`, `running`, `completed`, `failed`) | `200 OK` / `404` |
+| `GET` | `/api/audits/{audit_id}/report` | Retrieve the completed JSON report | `200 OK` / `409` / `422` |
+
+### 4. Example Usage (PowerShell)
+
+**Submit an audit:**
+```powershell
+$body = @{ url = "https://example.com" } | ConvertTo-Json
+$res = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/audits" -Method Post -Body $body -ContentType "application/json"
+$auditId = $res.audit_id
+Write-Host "Audit queued with ID: $auditId"
+```
+
+**Check status:**
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/audits/$auditId"
+```
+*Response while running:*
+```json
+{
+  "audit_id": "65805e1b02ec49549c4c4a94ca61ea2b",
+  "status": "running",
+  "url": "https://example.com/",
+  "created_at": "2026-10-28T11:45:11.055976Z",
+  "started_at": "2026-10-28T11:45:11.056300Z",
+  "completed_at": null,
+  "error": null
+}
+```
+
+**Retrieve the report once completed:**
+```powershell
+$report = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/audits/$auditId/report"
+$report | ConvertTo-Json -Depth 5
+```
+
+### 5. Running the API Test Suite
+
+```bash
+# Run unit & mock integration tests
+python -m pytest tests/test_api.py -v
+
+# Run existing engine offline tests
+python skills/audit-orchestrator/scripts/selftest.py
+```
+
+### 6. Configuration & Architecture Notes
+
+- **In-Process Job Store**: Audit jobs and status are tracked in memory for development efficiency. Jobs are reset if the server restarts. Persistent storage (database/Supabase) can be integrated in later phases.
+- **Concurrency & Throttling**: Limits concurrent crawls via `MAX_CONCURRENT_AUDITS` (default `2`) and enforces execution timeouts via `AUDIT_TIMEOUT_SECONDS` (default `240s`).
+- **SSRF Protections**: Request validation rejects loopback (`127.0.0.0/8`, `::1`), private networks (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local addresses, and cloud metadata (`169.254.169.254`, `metadata.google.internal`).
+- **Crawler Isolation**: The existing crawler operates strictly on-origin and obeys robots.txt. Unsafe redirect destinations beyond initial preflight are bounded by crawler fetch timeouts and network limits.
+
+## React Frontend (Phase 2 Integration)
+
+A modern, responsive React frontend built with TypeScript, Vite, Tailwind CSS, and React Router. The frontend implements the finalized Google Stitch design system (dark navy theme, cyan/teal accents, technical SaaS typography, evidence-focused finding cards, and status polling).
+
+### 1. Installation
+
+```bash
+cd frontend
+npm install
+```
+
+### 2. Development Server (Windows PowerShell)
+
+In terminal 1 (start FastAPI backend):
+```powershell
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+In terminal 2 (start React frontend):
+```powershell
+cd frontend
+npm run dev
+```
+
+Open your browser to `http://localhost:5173`.
+
+### 3. Production Build
+
+```powershell
+cd frontend
+npm run build
+```
+
+Production assets are emitted to `frontend/dist/`.
+
+### 4. Available Frontend Routes
+
+* `/` — **Public Landing Page**: Hero headline, prominent URL search input, capability badges, and interactive example report preview.
+* `/audit/new` — **New Audit Dispatcher**: Target URL submission with validation, quick suggestions, and execution scope details.
+* `/audit/:auditId` — **Live Audit Dashboard**: Real-time polling indicator (`queued`, `running`), summary metrics, severity filters, search, and expandable finding cards.
+* `/dashboard` — **Active / Recent Dashboard**: View active audit or latest inspected site.
+* `/findings` — **Detailed Findings Explorer**: Deep inspection across all rule families (`CRA-*`, `FC-ENT-*`, `FC-FRESH-*`, `ENG-*`, `FC-PROACT-*`), category filters, and verification commands.
+* `/history` — **Recent Audits**: In-browser session audit log with quick links to previous reports.
+* `/settings` — **System & Engine Info**: Live FastAPI health diagnostic, stdlib verification, and crawl safeguards.
+
 ## Known limitation
 
 Engagement checks are **structural** (dead CTAs, H1, breadcrumbs, empty FAQ bodies). They do not score subjective “is this templated city-pair copy specific enough?”
@@ -123,3 +247,5 @@ Engagement checks are **structural** (dead CTAs, H1, breadcrumbs, empty FAQ bodi
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+
