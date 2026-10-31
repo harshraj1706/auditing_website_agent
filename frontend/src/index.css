@@ -44,3 +44,54 @@
 .glow-card {
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
+
+/* Print & PDF Export Styles */
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+  }
+
+  /* Hide navigation, sidebar, interactive filters, and action buttons during print */
+  aside,
+  nav,
+  .no-print,
+  button,
+  input,
+  .demo-banner {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Force dark cards to look crisp on white paper */
+  .rounded-xl,
+  .rounded-2xl {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+    border: 1px solid #CBD5E1 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 1.25rem;
+  }
+
+  h1, h2, h3, h4 {
+    color: #0F172A !important;
+  }
+
+  p, span, div {
+    color: #334155 !important;
+  }
+
+  code, pre {
+    background-color: #F8FAFC !important;
+    color: #0F172A !important;
+    border: 1px solid #E2E8F0 !important;
+    white-space: pre-wrap !important;
+  }
+}

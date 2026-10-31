@@ -35,7 +35,7 @@ export const Sidebar: React.FC = () => {
   return (
     <>
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-[#0B0F17] border-b border-slate-800">
+      <div className="md:hidden flex items-center justify-between p-4 bg-[#0B0F17] border-b border-slate-800 no-print">
         <Link to="/" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded bg-gradient-to-tr from-cyan-500 to-teal-400 flex items-center justify-center">
             <Cpu className="w-4 h-4 text-slate-950 font-bold" />
@@ -53,7 +53,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed md:sticky top-0 left-0 z-40 h-screen w-64 bg-[#0D121F] border-r border-slate-800 flex flex-col justify-between transition-transform duration-200 md:translate-x-0 ${
+        className={`no-print fixed md:sticky top-0 left-0 z-40 h-screen w-64 bg-[#0D121F] border-r border-slate-800 flex flex-col justify-between transition-transform duration-200 md:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

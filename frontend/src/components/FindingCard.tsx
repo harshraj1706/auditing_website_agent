@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Finding } from '../types/audit';
 import { SeverityBadge } from './StatusBadge';
+import { generateRemediationSnippet } from '../services/snippetGenerator';
 import {
   ChevronDown,
   ChevronUp,
@@ -9,19 +10,32 @@ import {
   Copy,
   Check,
   Lightbulb,
+  Code,
+  FileCode,
+  Sparkles,
 } from 'lucide-react';
 
 interface FindingCardProps {
   finding: Finding;
   defaultExpanded?: boolean;
+  siteContext?: {
+    url?: string;
+    site?: string;
+    siteType?: string;
+  };
 }
 
 export const FindingCard: React.FC<FindingCardProps> = ({
   finding,
   defaultExpanded = false,
+  siteContext,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [copiedStep, setCopiedStep] = useState<number | null>(null);
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'remediation'>('overview');
+
+  const snippet = generateRemediationSnippet(finding, siteContext);
 
   const verificationSteps = Array.isArray(finding.verification_steps)
     ? finding.verification_steps
@@ -33,6 +47,12 @@ export const FindingCard: React.FC<FindingCardProps> = ({
     navigator.clipboard.writeText(text);
     setCopiedStep(index);
     setTimeout(() => setCopiedStep(null), 2000);
+  };
+
+  const copySnippetToClipboard = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedSnippet(true);
+    setTimeout(() => setCopiedSnippet(false), 2000);
   };
 
   const getBorderColor = () => {
@@ -68,6 +88,12 @@ export const FindingCard: React.FC<FindingCardProps> = ({
                 {finding.category}
               </span>
             )}
+            {snippet && (
+              <span className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded">
+                <Sparkles className="w-3 h-3 text-emerald-400" />
+                Fix Code Ready
+              </span>
+            )}
             {finding.confidence && (
               <span className="text-[11px] text-slate-500 font-mono ml-auto md:ml-0">
                 {Math.round(finding.confidence * 100)}% confidence
@@ -96,91 +122,188 @@ export const FindingCard: React.FC<FindingCardProps> = ({
       {/* Expanded details */}
       {expanded && (
         <div className="px-5 pb-5 pt-2 border-t border-slate-800/80 space-y-4 bg-slate-950/40">
-          {/* Affected URLs */}
-          {finding.affected_urls && finding.affected_urls.length > 0 && (
-            <div className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Affected URLs ({finding.affected_urls.length})
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {finding.affected_urls.map((url, i) => (
-                  <a
-                    key={i}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-mono text-cyan-400 hover:text-cyan-300 bg-cyan-950/40 hover:bg-cyan-950/70 border border-cyan-900/50 px-2.5 py-1 rounded transition-colors"
-                  >
-                    <span className="truncate max-w-xs">{url}</span>
-                    <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                  </a>
-                ))}
-              </div>
+          {/* Tab Navigation if snippet is available */}
+          {snippet && (
+            <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('overview')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                  activeTab === 'overview'
+                    ? 'bg-slate-800 text-cyan-400 border border-slate-700'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                <Lightbulb className="w-3.5 h-3.5" />
+                <span>Finding Details & Steps</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('remediation')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                  activeTab === 'remediation'
+                    ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/70 shadow-sm'
+                    : 'text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-950/30'
+                }`}
+              >
+                <Code className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Instant Fix Code</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              </button>
             </div>
           )}
 
-          {/* Evidence Full Block */}
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Evidence Detected
-            </span>
-            <div className="p-3.5 rounded-lg bg-[#0B0F17] border border-slate-800/90 text-sm font-mono text-slate-300 leading-relaxed overflow-x-auto whitespace-pre-wrap">
-              {finding.evidence}
-            </div>
-          </div>
-
-          {/* Suggested Remediation Action */}
-          <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-slate-900/90 to-cyan-950/20 border border-cyan-900/30">
-            <div className="flex items-center gap-2 text-cyan-300">
-              <Lightbulb className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-              <span className="text-xs font-bold uppercase tracking-wider">
-                Recommended Remediation
-              </span>
-              <span className="ml-auto text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-900/50 text-cyan-200 border border-cyan-800/50">
-                Priority: {finding.suggested_action?.priority || finding.severity}
-              </span>
-            </div>
-
-            <p className="text-sm font-medium text-slate-200">
-              {finding.suggested_action?.summary || (finding as any).remediation || 'No remediation required.'}
-            </p>
-
-            {finding.suggested_action.how && (
-              <div className="pt-2 text-xs text-slate-400 leading-relaxed border-t border-slate-800">
-                <span className="text-slate-300 font-semibold">How to fix: </span>
-                {finding.suggested_action.how}
-              </div>
-            )}
-          </div>
-
-          {/* Verification Steps */}
-          {verificationSteps.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                <Terminal className="w-3.5 h-3.5 text-slate-400" />
-                <span>Verification Command & Validation</span>
-              </div>
-              <div className="space-y-2">
-                {verificationSteps.map((step, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-[#0B0F17] border border-slate-800/80 font-mono text-xs text-emerald-400"
-                  >
-                    <code className="truncate select-all">{step}</code>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(step, idx)}
-                      title="Copy command"
-                      className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors flex-shrink-0"
-                    >
-                      {copiedStep === idx ? (
-                        <Check className="w-4 h-4 text-emerald-400" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </button>
+          {/* TAB 1: OVERVIEW & EVIDENCE */}
+          {activeTab === 'overview' && (
+            <div className="space-y-4">
+              {/* Affected URLs */}
+              {finding.affected_urls && finding.affected_urls.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Affected URLs ({finding.affected_urls.length})
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {finding.affected_urls.map((url, i) => (
+                      <a
+                        key={i}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-mono text-cyan-400 hover:text-cyan-300 bg-cyan-950/40 hover:bg-cyan-950/70 border border-cyan-900/50 px-2.5 py-1 rounded transition-colors"
+                      >
+                        <span className="truncate max-w-xs">{url}</span>
+                        <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                      </a>
+                    ))}
                   </div>
-                ))}
+                </div>
+              )}
+
+              {/* Evidence Full Block */}
+              <div className="space-y-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Evidence Detected
+                </span>
+                <div className="p-3.5 rounded-lg bg-[#0B0F17] border border-slate-800/90 text-sm font-mono text-slate-300 leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                  {finding.evidence}
+                </div>
+              </div>
+
+              {/* Suggested Remediation Action */}
+              <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-slate-900/90 to-cyan-950/20 border border-cyan-900/30">
+                <div className="flex items-center gap-2 text-cyan-300">
+                  <Lightbulb className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    Recommended Remediation
+                  </span>
+                  <span className="ml-auto text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-900/50 text-cyan-200 border border-cyan-800/50">
+                    Priority: {finding.suggested_action?.priority || finding.severity}
+                  </span>
+                </div>
+
+                <p className="text-sm font-medium text-slate-200">
+                  {finding.suggested_action?.summary || (finding as any).remediation || 'No remediation required.'}
+                </p>
+
+                {finding.suggested_action.how && (
+                  <div className="pt-2 text-xs text-slate-400 leading-relaxed border-t border-slate-800">
+                    <span className="text-slate-300 font-semibold">How to fix: </span>
+                    {finding.suggested_action.how}
+                  </div>
+                )}
+              </div>
+
+              {/* Verification Steps */}
+              {verificationSteps.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                    <Terminal className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Verification Command & Validation</span>
+                  </div>
+                  <div className="space-y-2">
+                    {verificationSteps.map((step, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-[#0B0F17] border border-slate-800/80 font-mono text-xs text-emerald-400"
+                      >
+                        <code className="truncate select-all">{step}</code>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(step, idx)}
+                          title="Copy command"
+                          className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors flex-shrink-0"
+                        >
+                          {copiedStep === idx ? (
+                            <Check className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: REMEDIATION SNIPPET (Instant Fix Code) */}
+          {activeTab === 'remediation' && snippet && (
+            <div className="space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg bg-emerald-950/20 border border-emerald-900/40">
+                <div className="flex items-center gap-2">
+                  <FileCode className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <div>
+                    <span className="text-xs font-semibold text-emerald-200">
+                      {snippet.title}
+                    </span>
+                    <p className="text-[11px] text-slate-400">
+                      {snippet.explanation}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <span className="font-mono text-[11px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                    {snippet.filename}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => copySnippetToClipboard(snippet.code)}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-colors shadow-sm cursor-pointer"
+                  >
+                    {copiedSnippet ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Code</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Code Box */}
+              <div className="relative rounded-lg bg-[#0B0F17] border border-slate-800 overflow-hidden">
+                <div className="flex items-center justify-between px-3.5 py-1.5 bg-slate-900/80 border-b border-slate-800 text-[11px] font-mono text-slate-400">
+                  <span>Language: {snippet.language}</span>
+                  <span className="text-slate-500">Ready to copy</span>
+                </div>
+                <pre className="p-4 text-xs font-mono text-emerald-300/90 leading-relaxed overflow-x-auto whitespace-pre selection:bg-emerald-900/60">
+                  <code>{snippet.code}</code>
+                </pre>
+              </div>
+
+              {/* Placement Guide */}
+              <div className="p-2.5 rounded-lg bg-slate-900/50 border border-slate-800/80 text-xs text-slate-300 flex items-start gap-2">
+                <Lightbulb className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold text-slate-200">Where to place: </span>
+                  <span className="text-slate-400">{snippet.placementGuide}</span>
+                </div>
               </div>
             </div>
           )}

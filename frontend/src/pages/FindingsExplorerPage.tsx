@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { FindingCard } from '../components/FindingCard';
+import { ScoreGauge } from '../components/ScoreGauge';
+import { calculateCitabilityScore } from '../services/scoreCalculator';
+import {
+  exportMarkdownReport,
+  exportJsonReport,
+  printReport,
+} from '../services/exportReport';
 import { api } from '../services/api';
 import { sessionStore } from '../services/sessionStore';
 import { EXAMPLE_AUDIT_REPORT } from '../services/exampleData';
@@ -9,6 +16,9 @@ import {
   Layers,
   Search,
   CheckCircle2,
+  FileText,
+  Download,
+  Printer,
 } from 'lucide-react';
 
 export const FindingsExplorerPage: React.FC = () => {
@@ -52,6 +62,7 @@ export const FindingsExplorerPage: React.FC = () => {
   });
 
   const categories = Array.from(new Set(findings.map((f) => f.category).filter(Boolean)));
+  const scoreResult = calculateCitabilityScore(report);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#0B0F17] text-slate-100">
@@ -73,14 +84,53 @@ export const FindingsExplorerPage: React.FC = () => {
             </span>
           </div>
 
-          <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">
-            Audit Findings & Remediation Guide
-          </h1>
-          <p className="text-sm text-slate-400 max-w-2xl">
-            Deep technical inspection of verified citability barriers. Every finding includes
-            grounded evidence, priority actions, and reproducible verification commands.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-2">
+            <div>
+              <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">
+                Audit Findings & Remediation Guide
+              </h1>
+              <p className="text-sm text-slate-400 max-w-2xl mt-1">
+                Deep technical inspection of verified citability barriers. Every finding includes
+                grounded evidence, priority actions, and reproducible verification commands.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 no-print self-start sm:self-auto flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => exportMarkdownReport(report)}
+                title="Export Markdown report"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors shadow-sm cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Markdown</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => exportJsonReport(report)}
+                title="Download JSON"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors shadow-sm cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-cyan-400" />
+                <span>JSON</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => printReport()}
+                title="Print or Save PDF"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors shadow-sm cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 text-amber-400" />
+                <span>PDF</span>
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* AI Citability Score & Pillar Gauges */}
+        <ScoreGauge scoreData={scoreResult} siteName={report.site} />
 
         {/* Summary Metrics Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -261,7 +311,15 @@ export const FindingsExplorerPage: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {filteredFindings.map((finding) => (
-                <FindingCard key={finding.id} finding={finding} defaultExpanded={true} />
+                <FindingCard
+                  key={finding.id}
+                  finding={finding}
+                  defaultExpanded={true}
+                  siteContext={{
+                    site: report.site,
+                    siteType: report.site_type,
+                  }}
+                />
               ))}
             </div>
           )}

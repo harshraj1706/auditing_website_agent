@@ -3,12 +3,21 @@ import { useParams, Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { FindingCard } from '../components/FindingCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { ScoreGauge } from '../components/ScoreGauge';
+import { calculateCitabilityScore } from '../services/scoreCalculator';
+import {
+  exportMarkdownReport,
+  exportJsonReport,
+  printReport,
+} from '../services/exportReport';
 import { api, ApiError } from '../services/api';
 import { sessionStore } from '../services/sessionStore';
 import { EXAMPLE_AUDIT_REPORT } from '../services/exampleData';
 import type { AuditReport, AuditStatusResponse } from '../types/audit';
 import {
   Download,
+  FileText,
+  Printer,
   PlusCircle,
   ExternalLink,
   Search,
@@ -106,18 +115,19 @@ export const DashboardPage: React.FC = () => {
     };
   }, [effectiveAuditId]);
 
-  // Export JSON Report
-  const handleDownloadJson = () => {
+  // Multi-format report export handlers
+  const handleExportMarkdown = () => {
     if (!report) return;
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-report-${report.site || 'website'}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    exportMarkdownReport(report);
+  };
+
+  const handleExportJson = () => {
+    if (!report) return;
+    exportJsonReport(report);
+  };
+
+  const handlePrint = () => {
+    printReport();
   };
 
   // Filter findings
@@ -142,6 +152,7 @@ export const DashboardPage: React.FC = () => {
   const categories = Array.from(new Set(findings.map((f) => f.category).filter(Boolean)));
 
   const isDemo = effectiveAuditId === 'demo-stripe-audit' || (!auditId && !sessionStore.getAudits()[0]?.audit_id);
+  const scoreResult = report ? calculateCitabilityScore(report) : null;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#0B0F17] text-slate-100">
@@ -250,15 +261,37 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5 no-print">
                 <button
                   type="button"
-                  onClick={handleDownloadJson}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors shadow-sm"
+                  onClick={handleExportMarkdown}
+                  title="Export complete report as Markdown document for Jira, GitHub, or Notion"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors shadow-sm cursor-pointer"
                 >
-                  <Download className="w-4 h-4 text-cyan-400" />
-                  Download JSON
+                  <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Export Markdown</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportJson}
+                  title="Download standard JSON report matching report.schema.json"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors shadow-sm cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>JSON</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  title="Print or Save as PDF"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors shadow-sm cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Print / PDF</span>
+                </button>
+
                 <Link
                   to="/audit/new"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all hover:scale-105"
@@ -268,6 +301,14 @@ export const DashboardPage: React.FC = () => {
                 </Link>
               </div>
             </div>
+
+            {/* AI Citability Score & Pillar Gauges */}
+            {scoreResult && (
+              <ScoreGauge
+                scoreData={scoreResult}
+                siteName={report.site || statusData?.url}
+              />
+            )}
 
             {/* Summary Metrics Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -455,7 +496,16 @@ export const DashboardPage: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   {filteredFindings.map((finding) => (
-                    <FindingCard key={finding.id} finding={finding} defaultExpanded={finding.severity === 'critical'} />
+                    <FindingCard
+                      key={finding.id}
+                      finding={finding}
+                      defaultExpanded={finding.severity === 'critical'}
+                      siteContext={{
+                        site: report?.site,
+                        url: statusData?.url,
+                        siteType: report?.site_type,
+                      }}
+                    />
                   ))}
                 </div>
               )}
