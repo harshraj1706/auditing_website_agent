@@ -261,7 +261,15 @@ export const FindingsExplorerPage: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {filteredFindings.map((finding) => (
-                <FindingCard key={finding.id} finding={finding} defaultExpanded={true} />
+                <FindingCard
+                  key={finding.id}
+                  finding={finding}
+                  defaultExpanded={true}
+                  siteContext={{
+                    site: report.site,
+                    siteType: report.site_type,
+                  }}
+                />
               ))}
             </div>
           )}

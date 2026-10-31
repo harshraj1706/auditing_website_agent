@@ -455,7 +455,16 @@ export const DashboardPage: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   {filteredFindings.map((finding) => (
-                    <FindingCard key={finding.id} finding={finding} defaultExpanded={finding.severity === 'critical'} />
+                    <FindingCard
+                      key={finding.id}
+                      finding={finding}
+                      defaultExpanded={finding.severity === 'critical'}
+                      siteContext={{
+                        site: report?.site,
+                        url: statusData?.url,
+                        siteType: report?.site_type,
+                      }}
+                    />
                   ))}
                 </div>
               )}
