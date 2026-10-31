@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { FindingCard } from '../components/FindingCard';
+import { ScoreGauge } from '../components/ScoreGauge';
+import { calculateCitabilityScore } from '../services/scoreCalculator';
 import { api } from '../services/api';
 import { sessionStore } from '../services/sessionStore';
 import { EXAMPLE_AUDIT_REPORT } from '../services/exampleData';
@@ -52,6 +54,7 @@ export const FindingsExplorerPage: React.FC = () => {
   });
 
   const categories = Array.from(new Set(findings.map((f) => f.category).filter(Boolean)));
+  const scoreResult = calculateCitabilityScore(report);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#0B0F17] text-slate-100">
@@ -81,6 +84,9 @@ export const FindingsExplorerPage: React.FC = () => {
             grounded evidence, priority actions, and reproducible verification commands.
           </p>
         </div>
+
+        {/* AI Citability Score & Pillar Gauges */}
+        <ScoreGauge scoreData={scoreResult} siteName={report.site} />
 
         {/* Summary Metrics Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">

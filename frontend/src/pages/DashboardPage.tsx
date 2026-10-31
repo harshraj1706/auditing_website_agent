@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { FindingCard } from '../components/FindingCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { ScoreGauge } from '../components/ScoreGauge';
+import { calculateCitabilityScore } from '../services/scoreCalculator';
 import { api, ApiError } from '../services/api';
 import { sessionStore } from '../services/sessionStore';
 import { EXAMPLE_AUDIT_REPORT } from '../services/exampleData';
@@ -142,6 +144,7 @@ export const DashboardPage: React.FC = () => {
   const categories = Array.from(new Set(findings.map((f) => f.category).filter(Boolean)));
 
   const isDemo = effectiveAuditId === 'demo-stripe-audit' || (!auditId && !sessionStore.getAudits()[0]?.audit_id);
+  const scoreResult = report ? calculateCitabilityScore(report) : null;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#0B0F17] text-slate-100">
@@ -268,6 +271,14 @@ export const DashboardPage: React.FC = () => {
                 </Link>
               </div>
             </div>
+
+            {/* AI Citability Score & Pillar Gauges */}
+            {scoreResult && (
+              <ScoreGauge
+                scoreData={scoreResult}
+                siteName={report.site || statusData?.url}
+              />
+            )}
 
             {/* Summary Metrics Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
